@@ -10,12 +10,12 @@ import (
 
 func main() {
 	masses := loadMass("puzzle.txt")
-	var s float64
+	var s int64
 	for _, x := range masses {
-		s += x
+		s += fuel(x)
 	}
 
-	fmt.Printf("fuel: %d\n", fuel(s))
+	fmt.Printf("fuel: %d\n", s)
 }
 
 func fuel(mass float64) int64 {
