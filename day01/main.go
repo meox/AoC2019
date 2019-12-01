@@ -12,10 +12,25 @@ func main() {
 	masses := loadMass("puzzle.txt")
 	var s int64
 	for _, x := range masses {
-		s += fuel(x)
+		fuelForMass := fuel(x)
+		correction := calcCorrectFuel(float64(fuelForMass))
+		s += fuelForMass + correction
 	}
 
 	fmt.Printf("fuel: %d\n", s)
+}
+
+func calcCorrectFuel(mass float64) int64 {
+	var f int64
+	for {
+		v := fuel(mass)
+		if v <= 0 {
+			break
+		}
+		f += v
+		mass = float64(v)
+	}
+	return f
 }
 
 func fuel(mass float64) int64 {
