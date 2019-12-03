@@ -1,8 +1,11 @@
 package main
 
 import (
-	"github.com/pkg/errors"
 	"fmt"
+	"github.com/pkg/errors"
+	"os"
+	"strconv"
+	"strings"
 )
 
 const (
@@ -11,54 +14,125 @@ const (
 	HLT = 99
 )
 
-type Program []int
 
-func IntCode(program Program) (Program, error) {
+type Program struct {
+	ip int
+	code []int
+
+	// 1K RAM
+	memory []int
+}
+
+func (p *Program) Load(fname string) error {
+	file, err := os.Open(fname)
+	if err != nil {
+		return err
+	}
+
+	buff := make([]byte, 4096)
+	n, err := file.Read(buff)
+	if err != nil {
+		return err
+	}
+
+	codes := strings.Split(string(buff[0:n]), ",")
+	for _, e := range codes {
+		opcode, err := strconv.Atoi(e)
+		if err != nil {
+			return err
+		}
+		p.code = append(p.code, opcode)
+	}
+
+	return nil
+}
+
+func (p *Program) Reset() {
+	p.memory = make([]int, len(p.code))
+	for idx, e := range p.code {
+		p.memory[idx] = e
+	}
+}
+
+func (p *Program) IntCode() error {
 	addr := func(idx int) int {
-		return program[idx]
+		return p.memory[idx]
 	}
 
 	value := func(idx int) int {
-		return program[addr(idx)]
+		return p.memory[addr(idx)]
 	}
 
-	for idx := 0; idx < len(program); idx++ {
-		op := program[idx]
+	p.ip = 0
+	for ; p.ip < len(p.memory); p.ip++ {
+		op := p.memory[p.ip]
 
 		switch op {
 		case ADD:
-			a := value(idx + 1)
-			b := value(idx + 2)
-			program[addr(idx + 3)] = a + b
-			idx += 3
+			a := value(p.ip + 1)
+			b := value(p.ip + 2)
+			p.memory[addr(p.ip + 3)] = a + b
+			p.ip += 3
 		case MUL:
-			a := value(idx + 1)
-			b := value(idx + 2)
-			program[addr(idx + 3)] = a * b
-			idx += 3
+			a := value(p.ip + 1)
+			b := value(p.ip + 2)
+			p.memory[addr(p.ip + 3)] = a * b
+			p.ip += 3
 		case HLT:
-			return program, nil
+			return nil
 		}
 	}
 
-	return program, errors.New("unexpected end")
+	return errors.New("unexpected end")
 }
 
 func main() {
-	prg1, err := IntCode([]int{2,4,4,5,99,0})
+	prg0 := Program{code: []int{2,4,4,5,99,0}}
+	prg0.Reset()
+	err := prg0.IntCode()
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("%v\n", prg1)
+	fmt.Printf("%v\n", prg0.code)
 
-	src := []int{1,0,0,3,1,1,2,3,1,3,4,3,1,5,0,3,2,1,9,19,1,19,5,23,2,6,23,27,1,6,27,31,2,31,9,35,1,35,6,39,1,10,39,43,2,9,43,47,1,5,47,51,2,51,6,55,1,5,55,59,2,13,59,63,1,63,5,67,2,67,13,71,1,71,9,75,1,75,6,79,2,79,6,83,1,83,5,87,2,87,9,91,2,9,91,95,1,5,95,99,2,99,13,103,1,103,5,107,1,2,107,111,1,111,5,0,99,2,14,0,0}
+	var prg1 Program
+	if err := prg1.Load("puzzle1.txt"); err != nil {
+		panic(err)
+	}
+	prg1.Reset()
 	// adjustment
-	src[1] = 12
-	src[2] = 2
+	prg1.memory[1] = 12
+	prg1.memory[2] = 2
 
-	prg2, err := IntCode(src)
+	err = prg1.IntCode()
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("%v\n", prg2)
+	fmt.Printf("%v\n", prg1.code)
+
+	var prg2 Program
+	if err := prg2.Load("puzzle2.txt"); err != nil {
+		panic(err)
+	}
+
+	for noun := 0; noun < 99; noun++ {
+		for verb := 0; verb < 99; verb++ {
+			prg2.Reset()
+
+			// adjustment
+			prg2.memory[1] = noun
+			prg2.memory[2] = verb
+
+			err = prg2.IntCode()
+			if err != nil {
+				panic(err)
+			}
+
+			if prg2.memory[0] == 19690720 {
+				fmt.Printf("noun=%d, verb=%d, result=%d\n", noun, verb, 100 * noun + verb)
+				goto End
+			}
+		}
+	}
+	End:
 }
