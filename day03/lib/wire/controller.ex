@@ -14,9 +14,9 @@ defmodule Day03.WireController do
 
   ### API
 
-  @spec position(pid(), atom(), number(), number()) :: any()
-  def position(controller, direction, x, y) do
-    GenServer.cast(controller, {:pos, direction, self(), x, y})
+  @spec position(pid(), atom(), number(), number(), number()) :: any()
+  def position(controller, direction, steps, x, y) do
+    GenServer.cast(controller, {:pos, direction, self(), x, y, steps})
   end
 
   def matches(controller) do
@@ -31,10 +31,10 @@ defmodule Day03.WireController do
   end
 
   @impl true
-  def handle_cast({:pos, dir, id, x, y}, {pos_map, matches}) do
+  def handle_cast({:pos, dir, id, x, y, steps}, {pos_map, matches}) do
     new_state =
       pos_map
-      |> Map.update({x, y}, [{id, dir}], fn l -> [{id, dir} | l] end)
+      |> Map.update({x, y}, [{id, dir, steps}], fn l -> [{id, dir, steps} | l] end)
       |> update_state(matches, x, y)
 
     {:noreply, new_state}
@@ -49,8 +49,8 @@ defmodule Day03.WireController do
     {pos_map, new_mathces}
   end
 
-  defp update_matches([{id_a, dir_a}, {id_b, dir_b}], matches, point) when id_a != id_b and dir_a != dir_b do
-    [point | matches]
+  defp update_matches([{id_a, dir_a, steps_a}, {id_b, dir_b, steps_b}], matches, {x, y}) when id_a != id_b and dir_a != dir_b do
+    [{x, y, steps_a + steps_b} | matches]
   end
   defp update_matches(_, matches, _point), do: matches
 end
