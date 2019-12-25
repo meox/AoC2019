@@ -5,3 +5,4 @@ https://adventofcode.com
 - Day01: Go
 - Day02: Go
 - Day03: Elixir
+- Day04: Go
