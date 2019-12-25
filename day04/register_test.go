@@ -55,3 +55,41 @@ func TestRegister_IsValidPass(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, r.IsValidPass())
 }
+
+func TestRegister_IsValidStrictPass(t *testing.T) {
+	r, err := NewRegister(123444)
+	require.NoError(t, err)
+	assert.False(t, r.IsValidStrictPass())
+
+	r, err = NewRegister(123456)
+	require.NoError(t, err)
+	assert.False(t, r.IsValidStrictPass())
+
+	r, err = NewRegister(111116)
+	require.NoError(t, err)
+	assert.False(t, r.IsValidStrictPass())
+
+	r, err = NewRegister(111100)
+	require.NoError(t, err)
+	assert.False(t, r.IsValidStrictPass())
+
+	r, err = NewRegister(111111)
+	require.NoError(t, err)
+	assert.False(t, r.IsValidStrictPass())
+
+	r, err = NewRegister(112233)
+	require.NoError(t, err)
+	assert.True(t, r.IsValidStrictPass())
+
+	r, err = NewRegister(111122)
+	require.NoError(t, err)
+	assert.True(t, r.IsValidStrictPass())
+
+	r, err = NewRegister(122334)
+	require.NoError(t, err)
+	assert.True(t, r.IsValidStrictPass())
+
+	r, err = NewRegister(113456)
+	require.NoError(t, err)
+	assert.True(t, r.IsValidStrictPass())
+}

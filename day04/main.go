@@ -17,14 +17,30 @@ func GetNumPass(start, stop int) (int, error) {
 		return 0, err
 	}
 
-	// find a starting point
-	if !regA.IsValidPass() {
+	nPass := 0
+	for regA.IsLess(regB) {
+		if regA.IsValidPass() {
+			nPass++
+		}
 		regA = regA.Next()
+	}
+
+	return nPass, nil
+}
+
+func GetNumPassStrict(start, stop int) (int, error) {
+	regA, err := NewRegister(start)
+	if err != nil {
+		return 0, err
+	}
+	regB, err := NewRegister(stop)
+	if err != nil {
+		return 0, err
 	}
 
 	nPass := 0
 	for regA.IsLess(regB) {
-		if regA.IsValidPass() {
+		if regA.IsValidStrictPass() {
 			nPass++
 		}
 		regA = regA.Next()
@@ -59,5 +75,11 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("num pass: %d", np)
+
+	nps, err := GetNumPassStrict(start, stop)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("num pass: %d, strict: %d", np, nps)
 }

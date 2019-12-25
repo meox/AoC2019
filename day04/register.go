@@ -46,21 +46,53 @@ func (r Register) IsValidPass() bool {
 	double := false
 
 	for _, e := range r.data {
-		if e == prev {
-			double = true
-		} else {
-			prev = e
-		}
-
 		if max == -1 || e >= max {
 			max = e
 		} else {
 			return false
 		}
+
+		if e == prev {
+			double = true
+		} else {
+			prev = e
+		}
 	}
 
 	return double
 }
+
+func (r Register) IsValidStrictPass() bool {
+	max := -1
+	prev := -1
+	equals := 1
+	double := false
+
+	for _, e := range r.data {
+		if max == -1 || e >= max {
+			max = e
+		} else {
+			return false
+		}
+
+		if e == prev {
+			equals++
+		} else {
+			if equals == 2 {
+				double = true
+			}
+			equals = 1
+			prev = e
+		}
+	}
+
+	if equals == 2 {
+		double = true
+	}
+
+	return double
+}
+
 func (r Register) ToDec() int {
 	k := 1
 	n := 0
