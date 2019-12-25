@@ -2,18 +2,7 @@ defmodule Day03.Wire do
   alias Day03.{Parser, WireController}
 
   def run(puzzle) do
-    {:ok, controller} = WireController.start_link()
-
-    puzzle
-    |> Parser.parse()
-    |> Enum.map(fn wire ->
-      Task.async(fn ->
-        send_to(controller, wire)
-      end)
-    end)
-    |> Enum.map(fn t ->
-      Task.await(t)
-    end)
+    {:ok, controller} = load_data_controller(puzzle)
 
     controller
     |> WireController.matches()
@@ -29,20 +18,8 @@ defmodule Day03.Wire do
     end)
   end
 
-
   def optimize_signal(puzzle) do
-    {:ok, controller} = WireController.start_link()
-
-    puzzle
-    |> Parser.parse()
-    |> Enum.map(fn wire ->
-      Task.async(fn ->
-        send_to(controller, wire)
-      end)
-    end)
-    |> Enum.map(fn t ->
-      Task.await(t)
-    end)
+    {:ok, controller} = load_data_controller(puzzle)
 
     controller
     |> WireController.matches()
@@ -58,7 +35,27 @@ defmodule Day03.Wire do
     end)
   end
 
-  def send_to(controller, wire) do
+  defp load_data_controller(puzzle) do
+    case WireController.start_link() do
+      {:ok, controller} ->
+        puzzle
+        |> Parser.parse()
+        |> Enum.map(fn wire ->
+          Task.async(fn ->
+            send_to(controller, wire)
+          end)
+        end)
+        |> Enum.map(fn t ->
+          Task.await(t)
+        end)
+
+        {:ok, controller}
+      _ ->
+        :error
+    end
+  end
+
+  defp send_to(controller, wire) do
     wire
     |> Enum.reduce({0, 0, 0}, fn {direction, n}, {x, y, steps} ->
       case direction do
