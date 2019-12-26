@@ -1,11 +1,10 @@
-package main
+package intcode
 
 import (
+	"errors"
 	"os"
 	"strconv"
 	"strings"
-
-	"github.com/pkg/errors"
 )
 
 const (
@@ -14,7 +13,15 @@ const (
 	STORE = 3
 	PRINT = 4
 	HLT   = 99
+
+	POSITION_MODE  = 0
+	IMMEDIATE_MODE = 1
 )
+
+type OpCode struct {
+	Value int
+	Mode  [3]int
+}
 
 type Program struct {
 	ip   int
@@ -37,11 +44,11 @@ func (p *Program) Load(fname string) error {
 
 	codes := strings.Split(string(buff[0:n]), ",")
 	for _, e := range codes {
-		opcode, err := strconv.Atoi(e)
+		inCode, err := strconv.Atoi(e)
 		if err != nil {
 			return err
 		}
-		p.code = append(p.code, opcode)
+		p.code = append(p.code, inCode)
 	}
 
 	return nil
@@ -85,3 +92,33 @@ func (p *Program) IntCode() error {
 
 	return errors.New("unexpected end")
 }
+
+func NewOpCode(code int) OpCode {
+	switch code {
+	case ADD, MUL, STORE, PRINT, HLT:
+		return OpCode{
+			Value: code,
+		}
+	default:
+		var inCode [2]int
+		var opCode OpCode
+		j := 5
+		for code > 0 {
+			v := code % 10
+			if j > 3 {
+				inCode[j-4] = v
+			} else {
+				opCode.Mode[j-1] = v
+			}
+
+			code /= 10
+			j--
+		}
+		opCode.Value = inCode[0]*10 + inCode[1]
+		return opCode
+	}
+}
+
+func (op *OpCode) A() int { return op.Mode[0] }
+func (op *OpCode) B() int { return op.Mode[1] }
+func (op *OpCode) C() int { return op.Mode[2] }
