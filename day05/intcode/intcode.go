@@ -8,11 +8,15 @@ import (
 )
 
 const (
-	ADD   = 1
-	MUL   = 2
-	STORE = 3
-	PRINT = 4
-	HLT   = 99
+	ADD      = 1
+	MUL      = 2
+	STORE    = 3
+	PRINT    = 4
+	JMPTRUE  = 5
+	JMPFALSE = 6
+	LTH      = 7
+	EQ       = 8
+	HLT      = 99
 
 	POSITION_MODE  = 0
 	IMMEDIATE_MODE = 1
@@ -28,6 +32,7 @@ type Program struct {
 	code []int
 
 	input  int
+	output int
 	memory []int
 }
 
@@ -47,7 +52,6 @@ func NewProgram(data string) (Program, error) {
 		p.code = append(p.code, inCode)
 	}
 
-	p.Reset()
 	return p, nil
 }
 
@@ -56,10 +60,11 @@ func (p *Program) Reset() {
 	for idx, e := range p.code {
 		p.memory[idx] = e
 	}
+	p.ip = 0
 }
 
 func (p *Program) Run() error {
-	p.ip = 0
+	p.Reset()
 	for p.ip < len(p.memory) {
 		op := NewOpCode(p.memory[p.ip])
 
@@ -108,7 +113,84 @@ func (p *Program) Run() error {
 				return fmt.Errorf("reading A parameter: %v", err)
 			}
 			fmt.Println(a)
+			p.output = a
 			p.ip += 2
+		case JMPTRUE:
+			a, err := op.ReadValueA(p.ip+1, p.memory)
+			if err != nil {
+				return fmt.Errorf("reading A parameter: %v", err)
+			}
+
+			// if the first parameter is non-zero
+			if a != 0 {
+				b, err := op.ReadValueB(p.ip+2, p.memory)
+				if err != nil {
+					return fmt.Errorf("reading A parameter: %v", err)
+				}
+				// it sets the instruction pointer to the value from the second parameter
+				p.ip = b
+			} else {
+				p.ip += 3
+			}
+		case JMPFALSE:
+			a, err := op.ReadValueA(p.ip+1, p.memory)
+			if err != nil {
+				return fmt.Errorf("reading A parameter: %v", err)
+			}
+
+			// if the first parameter is zero
+			if a == 0 {
+				b, err := op.ReadValueB(p.ip+2, p.memory)
+				if err != nil {
+					return fmt.Errorf("reading A parameter: %v", err)
+				}
+				// it sets the instruction pointer to the value from the second parameter
+				p.ip = b
+			} else {
+				p.ip += 3
+			}
+		case LTH:
+			a, err := op.ReadValueA(p.ip+1, p.memory)
+			if err != nil {
+				return fmt.Errorf("reading A parameter: %v", err)
+			}
+
+			b, err := op.ReadValueB(p.ip+2, p.memory)
+			if err != nil {
+				return fmt.Errorf("reading A parameter: %v", err)
+			}
+
+			var c int
+			if a < b {
+				c = 1
+			}
+
+			err = op.StoreValueC(p.ip+3, p.memory, c)
+			if err != nil {
+				return err
+			}
+			p.ip += 4
+		case EQ:
+			a, err := op.ReadValueA(p.ip+1, p.memory)
+			if err != nil {
+				return fmt.Errorf("reading A parameter: %v", err)
+			}
+
+			b, err := op.ReadValueB(p.ip+2, p.memory)
+			if err != nil {
+				return fmt.Errorf("reading A parameter: %v", err)
+			}
+
+			var c int
+			if a == b {
+				c = 1
+			}
+
+			err = op.StoreValueC(p.ip+3, p.memory, c)
+			if err != nil {
+				return err
+			}
+			p.ip += 4
 		case HLT:
 			return nil
 		}

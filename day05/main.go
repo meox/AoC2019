@@ -24,7 +24,7 @@ func main() {
 		panic(err)
 	}
 
-	p.SetInput(1)
+	p.SetInput(5)
 	err = p.Run()
 	if err != nil {
 		panic(err)
