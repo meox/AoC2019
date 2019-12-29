@@ -2,7 +2,7 @@ package intcode
 
 import (
 	"errors"
-	"os"
+	"fmt"
 	"strconv"
 	"strings"
 )
@@ -27,31 +27,28 @@ type Program struct {
 	ip   int
 	code []int
 
+	input  int
 	memory []int
 }
 
-func (p *Program) Load(fname string) error {
-	file, err := os.Open(fname)
-	if err != nil {
-		return err
-	}
+func (p *Program) SetInput(input int) {
+	p.input = input
+}
 
-	buff := make([]byte, 4096)
-	n, err := file.Read(buff)
-	if err != nil {
-		return err
-	}
+func NewProgram(data string) (Program, error) {
+	var p Program
 
-	codes := strings.Split(string(buff[0:n]), ",")
+	codes := strings.Split(data, ",")
 	for _, e := range codes {
 		inCode, err := strconv.Atoi(e)
 		if err != nil {
-			return err
+			return p, err
 		}
 		p.code = append(p.code, inCode)
 	}
 
-	return nil
+	p.Reset()
+	return p, nil
 }
 
 func (p *Program) Reset() {
@@ -61,30 +58,57 @@ func (p *Program) Reset() {
 	}
 }
 
-func (p *Program) IntCode() error {
-	addr := func(idx int) int {
-		return p.memory[idx]
-	}
-
-	value := func(idx int) int {
-		return p.memory[addr(idx)]
-	}
-
+func (p *Program) Run() error {
 	p.ip = 0
-	for ; p.ip < len(p.memory); p.ip++ {
-		op := p.memory[p.ip]
+	for p.ip < len(p.memory) {
+		op := NewOpCode(p.memory[p.ip])
 
-		switch op {
+		switch op.Value {
 		case ADD:
-			a := value(p.ip + 1)
-			b := value(p.ip + 2)
-			p.memory[addr(p.ip+3)] = a + b
-			p.ip += 3
+			a, err := op.ReadValueA(p.ip+1, p.memory)
+			if err != nil {
+				return fmt.Errorf("reading A parameter: %v", err)
+			}
+
+			b, err := op.ReadValueB(p.ip+2, p.memory)
+			if err != nil {
+				return fmt.Errorf("reading A parameter: %v", err)
+			}
+
+			err = op.StoreValueC(p.ip+3, p.memory, a+b)
+			if err != nil {
+				return err
+			}
+			p.ip += 4
 		case MUL:
-			a := value(p.ip + 1)
-			b := value(p.ip + 2)
-			p.memory[addr(p.ip+3)] = a * b
-			p.ip += 3
+			a, err := op.ReadValueA(p.ip+1, p.memory)
+			if err != nil {
+				return fmt.Errorf("reading A parameter: %v", err)
+			}
+
+			b, err := op.ReadValueB(p.ip+2, p.memory)
+			if err != nil {
+				return fmt.Errorf("reading A parameter: %v", err)
+			}
+
+			err = op.StoreValueC(p.ip+3, p.memory, a*b)
+			if err != nil {
+				return err
+			}
+			p.ip += 4
+		case STORE:
+			err := op.StoreValueA(p.ip+1, p.memory, p.input)
+			if err != nil {
+				return err
+			}
+			p.ip += 2
+		case PRINT:
+			a, err := op.ReadValueA(p.ip+1, p.memory)
+			if err != nil {
+				return fmt.Errorf("reading A parameter: %v", err)
+			}
+			fmt.Println(a)
+			p.ip += 2
 		case HLT:
 			return nil
 		}
@@ -119,6 +143,54 @@ func NewOpCode(code int) OpCode {
 	}
 }
 
-func (op *OpCode) A() int { return op.Mode[0] }
-func (op *OpCode) B() int { return op.Mode[1] }
-func (op *OpCode) C() int { return op.Mode[2] }
+func (op *OpCode) ModeParamA() int { return op.Mode[2] }
+func (op *OpCode) ModeParamB() int { return op.Mode[1] }
+func (op *OpCode) ModeParamC() int { return op.Mode[0] }
+
+func (op *OpCode) ReadValueA(idx int, memory []int) (int, error) {
+	return op.readValue(op.ModeParamA(), idx, memory)
+}
+
+func (op *OpCode) ReadValueB(idx int, memory []int) (int, error) {
+	return op.readValue(op.ModeParamB(), idx, memory)
+}
+
+func (op *OpCode) ReadValueC(idx int, memory []int) (int, error) {
+	return op.readValue(op.ModeParamC(), idx, memory)
+}
+
+func (op *OpCode) StoreValueA(idx int, memory []int, val int) error {
+	return op.storeValue(op.ModeParamA(), idx, memory, val)
+}
+
+func (op *OpCode) StoreValueB(idx int, memory []int, val int) error {
+	return op.storeValue(op.ModeParamB(), idx, memory, val)
+}
+
+func (op *OpCode) StoreValueC(idx int, memory []int, val int) error {
+	return op.storeValue(op.ModeParamC(), idx, memory, val)
+}
+
+func (op *OpCode) readValue(mode int, idx int, memory []int) (int, error) {
+	switch mode {
+	case IMMEDIATE_MODE:
+		return memory[idx], nil
+	case POSITION_MODE:
+		addr := memory[idx]
+		return memory[addr], nil
+	}
+	return 0, errors.New("io error")
+}
+
+func (op *OpCode) storeValue(mode int, idx int, memory []int, val int) error {
+	switch mode {
+	case IMMEDIATE_MODE:
+		memory[idx] = val
+	case POSITION_MODE:
+		addr := memory[idx]
+		memory[addr] = val
+	default:
+		return errors.New("mode not supported")
+	}
+	return nil
+}
